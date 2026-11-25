@@ -1,0 +1,24 @@
+name: Build Windows app
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Run tests
+        run: dotnet test .\AutoCue.Tests\AutoCue.Tests.csproj --configuration Release
+      - name: Publish standalone executable
+        run: .\scripts\publish-windows.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AutoCue-win-x64
+          path: artifacts/windows-x64/AutoCue.exe
