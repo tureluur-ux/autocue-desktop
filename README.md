@@ -1,13 +1,14 @@
 # AutoCue
 
-AutoCue is a lightweight Windows teleprompter for rehearsals, presentations, and recording. Open a `.txt` or `.md` script, set a comfortable reading speed and text size, then start the smooth, hands-free scroll.
+AutoCue is a lightweight Windows teleprompter for rehearsals, presentations, and recording. Write or open a `.txt`/`.md` script, set a comfortable reading speed and text size, then start the smooth, hands-free scroll.
 
 ## Features
 
-- Open text and Markdown files from the file picker or drag and drop them onto the app.
+- Create scripts in the built-in editor, or open `.txt` and `.md` files from the file picker or by drag and drop.
+- Preview your script, make edits, and save it as a UTF-8 `.txt` or `.md` file.
 - Smooth scrolling with an adjustable speed from 10 to 240 pixels per second.
 - Adjustable, high-contrast script text from 24 to 56 pixels.
-- Start or pause with the on-screen button or the **Space** key.
+- Start or pause with the on-screen button or the **Space** key; save changes with **Ctrl+S**.
 - Speed and text-size preferences are saved automatically for the next launch.
 - Native Windows interface with no account, network access, or script upload.
 
@@ -44,6 +45,8 @@ dotnet publish .\AutoCue.csproj --configuration Release --runtime win-x64 --self
 ```
 
 Each Windows build and pull request also runs the tests and publishes the executable as a downloadable `AutoCue-win-x64` workflow artifact.
+
+For a direct download, open [the latest AutoCue release](https://github.com/tureluur-ux/autocue-desktop/releases/latest) and download `AutoCue.exe` under **Assets**.
 
 ## Preferences
 

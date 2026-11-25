@@ -14,6 +14,10 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _scrollTimer;
     private bool _isLoadingSettings = true;
     private bool _isPlaying;
+    private bool _isEditing;
+    private bool _hasScript;
+    private bool _isDirty;
+    private bool _suppressEditorChanges;
     private string? _scriptPath;
 
     public MainWindow()
@@ -53,7 +57,7 @@ public partial class MainWindow : Window
             Multiselect = false
         };
 
-        if (dialog.ShowDialog(this) == true)
+        if (dialog.ShowDialog(this) == true && ConfirmUnsavedChanges())
         {
             LoadScript(dialog.FileName);
         }
@@ -71,17 +75,23 @@ public partial class MainWindow : Window
 
         try
         {
-            ScriptText.Text = File.ReadAllText(path);
+            var content = ScriptFileStore.Load(path);
+            _suppressEditorChanges = true;
+            ScriptEditor.Text = content;
+            ScriptText.Text = content;
+            _suppressEditorChanges = false;
             _scriptPath = path;
+            _hasScript = true;
+            _isDirty = false;
             FileNameText.Text = Path.GetFileName(path);
             EmptyState.Visibility = Visibility.Collapsed;
-            ScriptScrollViewer.Visibility = Visibility.Visible;
             ScriptHeader.Visibility = Visibility.Visible;
             ScriptScrollViewer.ScrollToVerticalOffset(0);
             SetPlaying(false);
-            StatusText.Text = $"{new FileInfo(path).Length:N0} bytes · script ready";
+            SetEditing(false);
+            StatusText.Text = $"Opened {Path.GetFileName(path)}";
         }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException)
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException or System.Security.SecurityException)
         {
             StatusText.Text = "Couldn't open the script.";
             MessageBox.Show(
@@ -96,9 +106,9 @@ public partial class MainWindow : Window
 
     private void TogglePlayback()
     {
-        if (string.IsNullOrEmpty(_scriptPath))
+        if (!_hasScript || _isEditing)
         {
-            StatusText.Text = "Open a text file before starting the teleprompter.";
+            StatusText.Text = "Create or open a script, then choose Preview to start the teleprompter.";
             return;
         }
 
@@ -201,7 +211,8 @@ public partial class MainWindow : Window
 
     private void Window_Drop(object sender, DragEventArgs e)
     {
-        if (e.Data.GetData(DataFormats.FileDrop) is string[] { Length: > 0 } paths)
+        if (e.Data.GetData(DataFormats.FileDrop) is string[] { Length: > 0 } paths
+            && ConfirmUnsavedChanges())
         {
             LoadScript(paths[0]);
         }
@@ -209,7 +220,12 @@ public partial class MainWindow : Window
 
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key == Key.Space && Keyboard.Modifiers == ModifierKeys.None)
+        if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.S)
+        {
+            SaveScript();
+            e.Handled = true;
+        }
+        else if (!_isEditing && e.Key == Key.Space && Keyboard.Modifiers == ModifierKeys.None)
         {
             TogglePlayback();
             e.Handled = true;
@@ -218,7 +234,151 @@ public partial class MainWindow : Window
 
     private void Window_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
+        if (!ConfirmUnsavedChanges())
+        {
+            e.Cancel = true;
+            return;
+        }
+
         _scrollTimer.Stop();
         SaveSettings();
+    }
+
+    private void NewScript_Click(object sender, RoutedEventArgs e)
+    {
+        if (!ConfirmUnsavedChanges())
+        {
+            return;
+        }
+
+        _scriptPath = null;
+        _hasScript = true;
+        _isDirty = true;
+        _suppressEditorChanges = true;
+        ScriptText.Text = string.Empty;
+        ScriptEditor.Clear();
+        _suppressEditorChanges = false;
+        FileNameText.Text = "Untitled script";
+        EmptyState.Visibility = Visibility.Collapsed;
+        ScriptHeader.Visibility = Visibility.Visible;
+        SetPlaying(false);
+        SetEditing(true);
+        StatusText.Text = "New script · not saved";
+    }
+
+    private void EditScript_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_hasScript)
+        {
+            NewScript_Click(sender, e);
+            return;
+        }
+
+        SetEditing(!_isEditing);
+    }
+
+    private void SaveScript_Click(object sender, RoutedEventArgs e) => SaveScript();
+
+    private void ScriptEditor_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+    {
+        if (_isEditing && !_suppressEditorChanges)
+        {
+            _isDirty = true;
+            StatusText.Text = "Unsaved changes · press Ctrl+S or Save .txt";
+        }
+    }
+
+    private void SetEditing(bool editing)
+    {
+        _isEditing = editing;
+        if (editing)
+        {
+            _suppressEditorChanges = true;
+            ScriptEditor.Text = ScriptText.Text;
+            _suppressEditorChanges = false;
+            ScriptEditor.Visibility = Visibility.Visible;
+            ScriptScrollViewer.Visibility = Visibility.Collapsed;
+            EditScriptButton.Content = "Preview";
+            PlayButton.IsEnabled = false;
+            ScriptEditor.Focus();
+        }
+        else
+        {
+            ScriptText.Text = ScriptEditor.Text;
+            ScriptEditor.Visibility = Visibility.Collapsed;
+            ScriptScrollViewer.Visibility = Visibility.Visible;
+            EditScriptButton.Content = "Edit";
+            PlayButton.IsEnabled = true;
+            ScriptScrollViewer.ScrollToVerticalOffset(0);
+        }
+    }
+
+    private bool SaveScript()
+    {
+        var path = _scriptPath;
+        if (string.IsNullOrEmpty(path))
+        {
+            var dialog = new SaveFileDialog
+            {
+                Title = "Save your script",
+                Filter = "Text files (*.txt)|*.txt|Markdown files (*.md)|*.md",
+                DefaultExt = ".txt",
+                AddExtension = true,
+                FileName = "My script.txt",
+                OverwritePrompt = true
+            };
+
+            if (dialog.ShowDialog(this) != true)
+            {
+                return false;
+            }
+
+            path = dialog.FileName;
+        }
+
+        try
+        {
+            var content = _isEditing ? ScriptEditor.Text : ScriptText.Text;
+            ScriptFileStore.Save(path, content);
+            ScriptText.Text = content;
+            _scriptPath = path;
+            _hasScript = true;
+            _isDirty = false;
+            FileNameText.Text = Path.GetFileName(path);
+            ScriptHeader.Visibility = Visibility.Visible;
+            StatusText.Text = $"Saved {Path.GetFileName(path)}";
+            return true;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException or System.Security.SecurityException)
+        {
+            StatusText.Text = "Couldn't save the script.";
+            MessageBox.Show(
+                $"AutoCue couldn't save this script.\n\n{exception.Message}",
+                "Couldn't save script",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+            return false;
+        }
+    }
+
+    private bool ConfirmUnsavedChanges()
+    {
+        if (!_isDirty)
+        {
+            return true;
+        }
+
+        var result = MessageBox.Show(
+            this,
+            "Save your changes before continuing?",
+            "Unsaved script",
+            MessageBoxButton.YesNoCancel,
+            MessageBoxImage.Warning);
+        return result switch
+        {
+            MessageBoxResult.Yes => SaveScript(),
+            MessageBoxResult.No => true,
+            _ => false
+        };
     }
 }

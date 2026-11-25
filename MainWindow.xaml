@@ -72,9 +72,13 @@
                                Foreground="{StaticResource MutedBrush}" Margin="1,2,0,0"/>
                 </StackPanel>
             </StackPanel>
-            <Button Grid.Column="1" Content="Open script" Click="OpenScript_Click"
-                    Background="#47D7AC" BorderBrush="#47D7AC" Foreground="#071511"
-                    Padding="18,11"/>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                <Button Content="New script" Click="NewScript_Click" Margin="0,0,8,0"/>
+                <Button Content="Open script" Click="OpenScript_Click" Margin="0,0,8,0"
+                        Background="#47D7AC" BorderBrush="#47D7AC" Foreground="#071511"/>
+                <Button Content="Save .txt" Click="SaveScript_Click" Margin="0,0,8,0"/>
+                <Button x:Name="EditScriptButton" Content="Edit" Click="EditScript_Click"/>
+            </StackPanel>
         </Grid>
 
         <Border Grid.Row="1" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}"
@@ -127,9 +131,12 @@
                         <TextBlock Text="Open a plain-text file or drop it here to get started."
                                    FontSize="14" Foreground="{StaticResource MutedBrush}" Margin="0,9,0,20"
                                    HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"/>
-                        <Button Content="Choose a text file" Click="OpenScript_Click"
-                                Background="#47D7AC" BorderBrush="#47D7AC" Foreground="#071511"
-                                HorizontalAlignment="Center"/>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                            <Button Content="Create a script" Click="NewScript_Click"
+                                    Background="#47D7AC" BorderBrush="#47D7AC" Foreground="#071511"
+                                    Margin="0,0,8,0"/>
+                            <Button Content="Open a text file" Click="OpenScript_Click"/>
+                        </StackPanel>
                         <TextBlock Text="Supports .TXT and .MD" FontSize="11" Foreground="#65738A"
                                    HorizontalAlignment="Center" Margin="0,14,0,0"/>
                     </StackPanel>
@@ -141,6 +148,13 @@
                                TextAlignment="Center" FontFamily="Segoe UI" LineHeight="57"
                                MaxWidth="850" HorizontalAlignment="Center"/>
                 </ScrollViewer>
+                <TextBox x:Name="ScriptEditor" Visibility="Collapsed" Margin="24,58,24,24"
+                         Background="#0B1020" Foreground="#F3F4F6" CaretBrush="#47D7AC"
+                         BorderThickness="0" FontFamily="Segoe UI" FontSize="20"
+                         Padding="22" AcceptsReturn="True" AcceptsTab="True"
+                         TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
+                         HorizontalScrollBarVisibility="Disabled"
+                         TextChanged="ScriptEditor_TextChanged"/>
                 <Border x:Name="ScriptHeader" Visibility="Collapsed" HorizontalAlignment="Left"
                         VerticalAlignment="Top" Margin="18,16,0,0" Background="#10192B"
                         BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
